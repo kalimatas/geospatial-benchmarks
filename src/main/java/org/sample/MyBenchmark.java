@@ -31,6 +31,8 @@
 
 package org.sample;
 
+import com.eatthepath.jeospatial.util.SimpleGeospatialPoint;
+import com.eatthepath.jeospatial.vptree.VPTree;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.DirectoryReader;
@@ -42,11 +44,9 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.spatial.SpatialStrategy;
 import org.apache.lucene.spatial.prefix.RecursivePrefixTreeStrategy;
-import org.apache.lucene.spatial.prefix.TermQueryPrefixTreeStrategy;
 import org.apache.lucene.spatial.prefix.tree.GeohashPrefixTree;
 import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.query.SpatialOperation;
-import org.apache.lucene.spatial.serialized.SerializedDVStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.RAMDirectory;
 import org.locationtech.spatial4j.context.SpatialContext;
@@ -88,6 +88,9 @@ public class MyBenchmark {
                                                                                                               GEO_PRECISION_LEVEL),
                                                                                         COORDINATES_FIELD);
 
+    // Jeospatial
+    private VPTree<SimpleGeospatialPoint> jeospatialPoints = new VPTree<>();
+
     public MyBenchmark() {
         try {
             indexWriter = new IndexWriter(directory, iwConfig);
@@ -118,13 +121,27 @@ public class MyBenchmark {
         indexSearcher = new IndexSearcher(indexReader);
     }
 
+    @Setup
+    public void initJeospatial() {
+        for (int i = 0; i < 3000; i++) {
+            jeospatialPoints.add(createRandomPoint());
+        }
+    }
+
+    private SimpleGeospatialPoint createRandomPoint() {
+        final double latitude = ThreadLocalRandom.current().nextDouble(50.4D, 51.4D);
+        final double longitude = ThreadLocalRandom.current().nextDouble(8.2D, 11.2D);
+        return new MyGeospatialPoint(latitude, longitude);
+        //return new SimpleGeospatialPoint(latitude, longitude);
+    }
+
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
     @OutputTimeUnit(TimeUnit.SECONDS)
     @Fork(value = 1)
     @Warmup(iterations = 0)
     @Measurement(iterations = 3)
-    public void benchRecursivePrefixTree() {
+    public void benchLucene() {
         double latitude = ThreadLocalRandom.current().nextDouble(50.4D, 51.4D);
         double longitude = ThreadLocalRandom.current().nextDouble(8.2D, 11.2D);
         final var spatialArgs = new SpatialArgs(SpatialOperation.IsWithin,
@@ -139,5 +156,16 @@ public class MyBenchmark {
             var id = doc.getField("id").numericValue().intValue();
         } catch (IOException e) {
         }
+    }
+
+    @Benchmark
+    @BenchmarkMode(Mode.Throughput)
+    @OutputTimeUnit(TimeUnit.SECONDS)
+    @Fork(value = 1)
+    @Warmup(iterations = 0)
+    @Measurement(iterations = 3)
+    public void benchJeospatial() {
+        var neighbor = jeospatialPoints.getNearestNeighbor(createRandomPoint(), 17 * 1000);
+        var n = neighbor.getLatitude();
     }
 }
