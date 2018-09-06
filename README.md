@@ -5,3 +5,10 @@ The benchmarks are done with [JMH](http://openjdk.java.net/projects/code-tools/j
 Lucene spatial extras https://lucene.apache.org/core/7_4_0/spatial-extras/index.html.
 
 Jeospatial https://jchambers.github.io/jeospatial
+
+Run:
+
+```bash
+mvn clean install
+java -jar target/benchmarks.jar
+```
