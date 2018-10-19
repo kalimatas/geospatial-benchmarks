@@ -50,6 +50,10 @@ THE POSSIBILITY OF SUCH DAMAGE.
             <id>local-maven-repo</id>
             <url>file:///${project.basedir}/local-maven-repo</url>
         </repository>
+        <repository>
+            <id>jsi</id>
+            <url>http://sourceforge.net/projects/jsi/files/m2_repo</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -73,8 +77,11 @@ THE POSSIBILITY OF SUCH DAMAGE.
             <groupId>jeospatial</groupId>
             <artifactId>com.eatthepath</artifactId>
             <version>0.1</version>
-            <!--<scope>system</scope>-->
-            <!--<systemPath>${project.basedir}/src/main/resources/jeospatial-0.1.jar</systemPath>-->
+        </dependency>
+        <dependency>
+            <groupId>net.sourceforge.jsi</groupId>
+            <artifactId>jsi</artifactId>
+            <version>1.0.0</version>
         </dependency>
     </dependencies>
 
