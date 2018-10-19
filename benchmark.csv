@@ -1,0 +1,4 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99,9%)","Unit"
+"org.sample.MyBenchmark.benchJeospatial","thrpt",1,3,"99235,728199","132352,813529","ops/s"
+"org.sample.MyBenchmark.benchJsi","thrpt",1,3,"309795,462017","202296,630623","ops/s"
+"org.sample.MyBenchmark.benchLucene","thrpt",1,3,"1199,864377","1199,138483","ops/s"

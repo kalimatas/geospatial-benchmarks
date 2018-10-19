@@ -45,16 +45,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class MyBenchmark {
 
     // Lucene
-    private static final String COORDINATES_FIELD = "coordinates";
-    private static final int GEO_PRECISION_LEVEL = 5;
-    private static final double NEARBY_RADIUS_DEGREE =
-            DistanceUtils.dist2Degrees(100, DistanceUtils.EARTH_MEAN_RADIUS_KM);
-
     private IndexSearcher indexSearcher = null;
     private final SpatialContext spatialCxt = SpatialContext.GEO;
     private final ShapeFactory shapeFactory = spatialCxt.getShapeFactory();
     private final SpatialStrategy coordinatesStrategy =
-            new RecursivePrefixTreeStrategy(new GeohashPrefixTree(spatialCxt, GEO_PRECISION_LEVEL), "coordinates");
+            new RecursivePrefixTreeStrategy(new GeohashPrefixTree(spatialCxt, 5), "coordinates");
 
     // Jeospatial
     private VPTree<SimpleGeospatialPoint> jeospatialPoints = new VPTree<>();
@@ -105,10 +100,8 @@ public class MyBenchmark {
     @Setup
     public void initJsi() {
         var r = new Random();
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < 3000; i++) {
             double latitude = ThreadLocalRandom.current().nextDouble(50.4D, 51.4D);
-            //double latitude = 50.4D;
-            //double longitude = 8.2D;
             double longitude = ThreadLocalRandom.current().nextDouble(8.2D, 11.2D);
             var rect = new Rectangle((float) latitude, (float) longitude,
                                      (float) latitude, (float) longitude);
@@ -131,6 +124,7 @@ public class MyBenchmark {
     public void benchLucene() {
         double latitude = ThreadLocalRandom.current().nextDouble(50.4D, 51.4D);
         double longitude = ThreadLocalRandom.current().nextDouble(8.2D, 11.2D);
+        final double NEARBY_RADIUS_DEGREE = DistanceUtils.dist2Degrees(100, DistanceUtils.EARTH_MEAN_RADIUS_KM);
         final var spatialArgs = new SpatialArgs(SpatialOperation.IsWithin,
                                                 shapeFactory.circle(longitude, latitude, NEARBY_RADIUS_DEGREE));
         final Query q = coordinatesStrategy.makeQuery(spatialArgs);
@@ -140,7 +134,7 @@ public class MyBenchmark {
                 return;
             }
             var doc = indexSearcher.doc(topDocs.scoreDocs[0].doc);
-            var coordinates = doc.getField(COORDINATES_FIELD).stringValue();
+            var id = doc.getField("id").numericValue();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -153,8 +147,8 @@ public class MyBenchmark {
     @Warmup(iterations = 0)
     @Measurement(iterations = 3)
     public void benchJeospatial() {
-        var neighbor = jeospatialPoints.getNearestNeighbor(createRandomPoint(), 100 * 1000);
-        var n = neighbor.getLatitude();
+        var neighbor = (MyGeospatialPoint) jeospatialPoints.getNearestNeighbor(createRandomPoint(), 100 * 1000);
+        var id = neighbor.getId();
     }
 
     @Benchmark
@@ -170,15 +164,18 @@ public class MyBenchmark {
         // This is required, because `rtree.nearest` requires a lambda for each result. To use a variable
         // inside a lambda it has to be effectively final, which does not allow us to change it, but we
         // change an object's state.
-        final var id = new AtomicInteger();
+        final var atomicId = new AtomicInteger();
         var p = new Point(latitude, longitude);
 
-        rtree.nearest(p, v -> {
-            id.set(v);
-            return true;
-        }, 100);
+        // The distance argument to rtree.nearest is a spherical distance in degrees. Here
+        // we convert 100km to degrees using Lucene's DistanceUtils :) Or, you can just put 0.89932036.
+        var distDegree = (float) DistanceUtils.dist2Degrees(100, DistanceUtils.EARTH_MEAN_RADIUS_KM);
 
-        //var rect = new Rectangle(latitude, longitude, latitude, longitude);
-        //var d = rect.distance(new Point(8.2F, 50.4F));
+        rtree.nearest(p, v -> {
+            atomicId.set(v);
+            return true;
+        }, distDegree);
+
+        var id = atomicId.get();
     }
 }
